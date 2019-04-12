@@ -29,7 +29,7 @@ void cpu_load(struct cpu *cpu, int argc, char **argv)
 
   if (argc != 2)
   {
-    printf("Correct usage: ./files file_name.extension\n");
+    // printf("Correct usage: ./files file_name.extension\n");
     return;
   }
   FILE *fp;
@@ -89,30 +89,34 @@ void alu(struct cpu *cpu, enum alu_op op, unsigned char regA, unsigned char regB
 
     // TODO: implement more ALU ops
 
-    case ALU_ADD:
+  case ALU_ADD:
 
     cpu->registers[regA] = cpu->registers[regA] + cpu->registers[regB];
 
     break;
 
-    case ALU_CMP:
+  case ALU_CMP:
 
-    if (cpu->registers[regA] == cpu->registers[regB]) {
+    // printf("cpu->registers[regA]: %d\n & cpu->registers[regB]: %d\n", cpu->registers[regA], cpu->registers[regB]);
 
-        cpu->flags[regA] = 00000001;
+    if (cpu->registers[regA] == cpu->registers[regB])
+    {
 
-    }
 
-    else if (cpu->registers[regA] > cpu->registers[regB]) {
-
-        cpu->flags[regA] = 00000010;
+      cpu->flags[0] = 0b00000001;
 
     }
 
-    else if (cpu->registers[regA] < cpu->registers[regB]) {
+    else if (cpu->registers[regA] > cpu->registers[regB])
+    {
 
-        cpu->flags[regA] = 00000100;
+      cpu->flags[0] = 0b00000010;
+    }
 
+    else if (cpu->registers[regA] < cpu->registers[regB])
+    {
+
+      cpu->flags[0] = 0b00000100;
     }
 
     break;
@@ -154,12 +158,15 @@ void cpu_run(struct cpu *cpu)
     unsigned char operand0 = cpu_ram_read(cpu, cpu->PC + 1);
     unsigned char operand1 = cpu_ram_read(cpu, cpu->PC + 2);
 
+    // printf("TRACE: cpu-PC: %d: cpu-IR: %02X    operand0: %02x operand1: %02x\n", cpu->PC, IR, operand0, operand1);
+
     // 4. switch() over it to decide on a course of action.
 
     switch (IR)
     {
     case LDI:
       // per spec LDI sets specified register to specified value
+      // printf("cpu->PCstart: %d\n", cpu->PC);
       cpu->registers[operand0] = operand1;
       cpu->PC += 3;
       break;
@@ -182,6 +189,7 @@ void cpu_run(struct cpu *cpu)
 
     case CMP:
       alu(cpu, ALU_CMP, operand0, operand1);
+      //  printf("CMP cpu->flags[0], %d\n", cpu->flags[0] );
       cpu->PC += 3;
       break;
     case CALL:
@@ -220,6 +228,99 @@ void cpu_run(struct cpu *cpu)
 
       cpu->PC += 2; //our program counter
       break;
+
+    case JMP:
+      reg_num = cpu->ram[cpu->PC + 1];
+
+        // printf("reg_num: %d\n", reg_num);
+        // printf("cpu->registers[reg_num] %d\n", cpu->registers[reg_num]);
+
+        int reg_address = cpu->registers[reg_num];
+
+        int spotsToJump = reg_address - cpu->PC;
+
+
+      cpu->PC = spotsToJump; //our program counter
+      break;
+
+    case JEQ:
+
+      // printf("JEQ cpu->PC: %d\n", cpu->PC);
+
+      // printf("cpu->flags[0] cpu->PC: %d\n", cpu->flags[0]);
+
+      if (cpu->flags[0] == 00000001)
+      {
+        // printf("JEQ MATCH!:\n");
+        reg_num = cpu->ram[cpu->PC + 1];
+
+        // printf("reg_num: %d\n", reg_num);
+        // printf("cpu->registers[reg_num] %d\n", cpu->registers[reg_num]);
+
+        int reg_address = cpu->registers[reg_num];
+
+        int spotsToJump = reg_address - cpu->PC;
+        // printf("spotsToJump: %d\n", spotsToJump);
+
+        // printf("cpu->registers[reg_num]: %d\n", cpu->registers[reg_num]);
+        // printf("reg_address: %d\n", reg_address);
+
+        cpu->PC += spotsToJump;
+        // printf("cpu->PC: %d\n", cpu->PC);
+        // cpu->PC += reg_address;
+        break;
+      }
+
+      else
+      {
+        cpu->PC += 2;
+        break;
+      }
+
+    case JNE:
+      // printf("cpu->PC0: %d\n", cpu->PC);
+      // printf("cpu->flags[0], %d\n", cpu->flags[0]);
+
+      // printf("cpu->flags[0] && 00000001 , %d\n", cpu->flags[0] & 00000001);
+
+      // int check = cpu->flags[0] & 00000001;
+
+      // printf("check is: %d\n", check);
+
+      if ((cpu->flags[0] & 00000001) == 0)
+      {
+        // printf("cpu->PC1: %d\n", cpu->PC);
+        // printf("not equal!\n");
+        reg_num = cpu->ram[cpu->PC + 1];
+
+        // printf("reg_num: %d\n", reg_num);
+        // printf("cpu->registers[reg_num] %d\n", cpu->registers[reg_num]);
+
+        int reg_address = cpu->registers[reg_num];
+
+        int spotsToJump = reg_address - cpu->PC;
+        // printf("spotsToJump: %d\n", spotsToJump);
+
+        // printf("cpu->registers[reg_num]: %d\n", cpu->registers[reg_num]);
+        // printf("reg_address: %d\n", reg_address);
+
+        // cpu->PC += 1 ;
+        // printf("cpu->PC2: %d\n", cpu->PC);
+
+        // cpu->PC = reg_address; //our program counter
+        cpu->PC += spotsToJump;
+        // printf("cpu->PC: %d\n", cpu->PC);
+        // cpu->PC += reg_address;
+        break;
+      }
+ 
+
+      else
+      {
+        // printf("Active?!\n");
+        cpu->PC += 2;
+        break;
+      }
     // Adds default case in case it gets a case it doesn't recognize
     default:
       // Print at a field width of 2 (2), add leading zeroes if necessary (0), use capital letters for hex values (X)
